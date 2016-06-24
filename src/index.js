@@ -1,16 +1,21 @@
-var page = require( 'page' );
+var page = require('page');
+var yo = require('yo-yo');
 
 var main = document.getElementById('main-container');
 
 
 page('/', function( ctx , next ){
-    main.innerHTML = 'Home <a href="/signup"> SignUp </a>';
+    
 });
 
 page('/signup', function( ctx , next ){
-        main.innerHTML = 'SignUp <a href="/"> Home </a>';
+    var mainContainer = document.getElementById('main-container');
+    
+    var el = 'Saludo';
+       mainContainer.innerHTML = el ;
 });
 
 page.start();
+
 
 

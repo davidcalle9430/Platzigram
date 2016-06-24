@@ -25,7 +25,11 @@ gulp.task( 'assets' , function(){
 
 
 function compile( watch ){
-    var bundle = watchify( './src/index.js' );
+    var bundle = watchify( {
+            entries: ['./src/index.js'],
+            cache: {},
+            packageCache: {},
+    });
     
     function rebundle(){
         bundle
@@ -48,11 +52,16 @@ function compile( watch ){
 
 
 gulp.task( 'build', function(){
-    return compile();
+     browserify( './src/index.js' )
+        .transform( babel )
+        .bundle()
+        .pipe( source( 'index.js' ))
+        .pipe( rename( 'app.js' ) )
+        .pipe( gulp.dest('public') );
 });
 
 gulp.task( 'watch' , function(){
    return compile( true ); 
 });
 
-gulp.task( 'default' , [ 'assets' , 'styles' , 'build' ] );
+gulp.task( 'default' , [ 'assets' , 'styles' , 'build'] );
