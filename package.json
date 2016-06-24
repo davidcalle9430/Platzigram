@@ -4,6 +4,7 @@
   "description": "Aplicación del curso definitivo de js",
   "main": "server.js",
   "dependencies": {
+    "empty-element": "^1.0.0",
     "express": "^4.13.4",
     "materialize-css": "^0.97.6",
     "page": "^1.7.1",
@@ -21,7 +22,7 @@
   },
   "scripts": {
     "build": "gulp",
-    "start": "gulp watch && node server.js"
+    "start": "gulp watch & node server.js"
   },
   "keywords": [
     "platzi",

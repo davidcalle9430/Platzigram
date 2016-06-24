@@ -64,6 +64,10 @@ function belCreateElement (tag, props, children) {
         key = 'class'
         p = 'class'
       }
+      // The for attribute gets transformed to htmlFor, but we just set as for
+      if (p === 'htmlFor') {
+        p = 'for'
+      }
       // If a property is boolean, set itself to the key
       if (BOOL_PROPS[key]) {
         if (val === 'true') val = key
@@ -119,9 +123,145 @@ function belCreateElement (tag, props, children) {
 module.exports = hyperx(belCreateElement)
 module.exports.createElement = belCreateElement
 
-},{"global/document":3,"hyperx":5}],2:[function(require,module,exports){
+},{"global/document":5,"hyperx":7}],2:[function(require,module,exports){
 
 },{}],3:[function(require,module,exports){
+// shim for using process in browser
+
+var process = module.exports = {};
+
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+
+var cachedSetTimeout;
+var cachedClearTimeout;
+
+(function () {
+  try {
+    cachedSetTimeout = setTimeout;
+  } catch (e) {
+    cachedSetTimeout = function () {
+      throw new Error('setTimeout is not defined');
+    }
+  }
+  try {
+    cachedClearTimeout = clearTimeout;
+  } catch (e) {
+    cachedClearTimeout = function () {
+      throw new Error('clearTimeout is not defined');
+    }
+  }
+} ())
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+
+function cleanUpNextTick() {
+    if (!draining || !currentQueue) {
+        return;
+    }
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
+    }
+    if (queue.length) {
+        drainQueue();
+    }
+}
+
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = cachedSetTimeout(cleanUpNextTick);
+    draining = true;
+
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    cachedClearTimeout(timeout);
+}
+
+process.nextTick = function (fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        cachedSetTimeout(drainQueue, 0);
+    }
+};
+
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
+process.title = 'browser';
+process.browser = true;
+process.env = {};
+process.argv = [];
+process.version = ''; // empty string to avoid regexp issues
+process.versions = {};
+
+function noop() {}
+
+process.on = noop;
+process.addListener = noop;
+process.once = noop;
+process.off = noop;
+process.removeListener = noop;
+process.removeAllListeners = noop;
+process.emit = noop;
+
+process.binding = function (name) {
+    throw new Error('process.binding is not supported');
+};
+
+process.cwd = function () { return '/' };
+process.chdir = function (dir) {
+    throw new Error('process.chdir is not supported');
+};
+process.umask = function() { return 0; };
+
+},{}],4:[function(require,module,exports){
+/* global HTMLElement */
+
+'use strict'
+
+module.exports = function emptyElement (element) {
+  if (!(element instanceof HTMLElement)) {
+    throw new TypeError('Expected an element')
+  }
+
+  var node
+  while ((node = element.lastChild)) element.removeChild(node)
+  return element
+}
+
+},{}],5:[function(require,module,exports){
 (function (global){
 var topLevel = typeof global !== 'undefined' ? global :
     typeof window !== 'undefined' ? window : {}
@@ -140,7 +280,7 @@ if (typeof document !== 'undefined') {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"min-document":2}],4:[function(require,module,exports){
+},{"min-document":2}],6:[function(require,module,exports){
 module.exports = attributeToProperty
 
 var transform = {
@@ -161,7 +301,7 @@ function attributeToProperty (h) {
   }
 }
 
-},{}],5:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 var attrToProp = require('hyperscript-attribute-to-property')
 
 var VAR = 0, TEXT = 1, OPEN = 2, CLOSE = 3, ATTR = 4
@@ -365,7 +505,7 @@ module.exports = function (h, opts) {
           state = ATTR_VALUE
           i--
         } else if (state === ATTR_VALUE && /\s/.test(c)) {
-          res.push([ATTR_BREAK],[ATTR_VALUE,reg])
+          res.push([ATTR_VALUE,reg],[ATTR_BREAK])
           reg = ''
           state = ATTR
         } else if (state === ATTR_VALUE || state === ATTR_VALUE_SQ
@@ -426,12 +566,12 @@ var closeRE = RegExp('^(' + [
 ].join('|') + ')(?:[\.#][a-zA-Z0-9\u007F-\uFFFF_:-]+)*$')
 function selfClosing (tag) { return closeRE.test(tag) }
 
-},{"hyperscript-attribute-to-property":4}],6:[function(require,module,exports){
+},{"hyperscript-attribute-to-property":6}],8:[function(require,module,exports){
 module.exports = Array.isArray || function (arr) {
   return Object.prototype.toString.call(arr) == '[object Array]';
 };
 
-},{}],7:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 // Create a range object for efficently rendering strings to elements.
 var range;
 
@@ -442,6 +582,7 @@ var testEl = (typeof document !== 'undefined') ?
 var XHTML = 'http://www.w3.org/1999/xhtml';
 var ELEMENT_NODE = 1;
 var TEXT_NODE = 3;
+var COMMENT_NODE = 8;
 
 // Fixes <https://github.com/patrick-steele-idem/morphdom/issues/32>
 // (IE7+ support) <=IE7 does not support el.hasAttribute(name)
@@ -812,8 +953,8 @@ function morphdom(fromNode, toNode, options) {
                                 // target DOM node.
                                 morphEl(curFromNodeChild, curToNodeChild, alreadyVisited);
                             }
-                        // Both nodes being compared are Text nodes
-                    } else if (curFromNodeType === TEXT_NODE) {
+                        // Both nodes being compared are Text or Comment nodes
+                    } else if (curFromNodeType === TEXT_NODE || curFromNodeType == COMMENT_NODE) {
                             isCompatible = true;
                             // Simply update nodeValue on the original node to
                             // change the text value
@@ -907,8 +1048,8 @@ function morphdom(fromNode, toNode, options) {
                 // Going from an element node to a text node
                 morphedNode = toNode;
             }
-        } else if (morphedNodeType === TEXT_NODE) { // Text node
-            if (toNodeType === TEXT_NODE) {
+        } else if (morphedNodeType === TEXT_NODE || morphedNodeType === COMMENT_NODE) { // Text or comment node
+            if (toNodeType === morphedNodeType) {
                 morphedNode.nodeValue = toNode.nodeValue;
                 return morphedNode;
             } else {
@@ -1004,7 +1145,7 @@ function morphdom(fromNode, toNode, options) {
 
 module.exports = morphdom;
 
-},{}],8:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 (function (process){
   /* globals require, module */
 
@@ -1630,7 +1771,7 @@ module.exports = morphdom;
   page.sameOrigin = sameOrigin;
 
 }).call(this,require('_process'))
-},{"_process":10,"path-to-regexp":9}],9:[function(require,module,exports){
+},{"_process":3,"path-to-regexp":11}],11:[function(require,module,exports){
 var isarray = require('isarray')
 
 /**
@@ -2022,103 +2163,7 @@ function pathToRegexp (path, keys, options) {
   return stringToRegexp(path, keys, options)
 }
 
-},{"isarray":6}],10:[function(require,module,exports){
-// shim for using process in browser
-
-var process = module.exports = {};
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    if (!draining || !currentQueue) {
-        return;
-    }
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = setTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    clearTimeout(timeout);
-}
-
-process.nextTick = function (fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        setTimeout(drainQueue, 0);
-    }
-};
-
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
-process.version = ''; // empty string to avoid regexp issues
-process.versions = {};
-
-function noop() {}
-
-process.on = noop;
-process.addListener = noop;
-process.once = noop;
-process.off = noop;
-process.removeListener = noop;
-process.removeAllListeners = noop;
-process.emit = noop;
-
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
-};
-
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
-process.umask = function() { return 0; };
-
-},{}],11:[function(require,module,exports){
+},{"isarray":8}],12:[function(require,module,exports){
 var bel = require('bel') // turns template tag into DOM elements
 var morphdom = require('morphdom') // efficiently diffs + morphs two DOM elements
 var defaultEvents = require('./update-events.js') // default events to be copied when dom elements update
@@ -2154,7 +2199,7 @@ module.exports.update = function (fromNode, toNode, opts) {
   }
 }
 
-},{"./update-events.js":12,"bel":1,"morphdom":7}],12:[function(require,module,exports){
+},{"./update-events.js":13,"bel":1,"morphdom":9}],13:[function(require,module,exports){
 module.exports = [
   // attribute events (can be set with attributes)
   'onclick',
@@ -2192,21 +2237,81 @@ module.exports = [
   'onfocusout'
 ]
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 var page = require('page');
+var template = require('./template');
+var empty = require('empty-element');
+
+page('/', function (ctx, next) {
+    var main = document.getElementById('main-container');
+    empty(main).appendChild(template);
+});
+
+},{"./template":15,"empty-element":4,"page":10}],15:[function(require,module,exports){
 var yo = require('yo-yo');
 
-var main = document.getElementById('main-container');
+module.exports = yo`<a href="/signup"> Iniciar Sesión </h1>`;
 
-page('/', function (ctx, next) {});
+},{"yo-yo":12}],16:[function(require,module,exports){
 
-page('/signup', function (ctx, next) {
-    var mainContainer = document.getElementById('main-container');
+var yo = require('yo-yo');
+var page = require('page');
 
-    var el = 'Saludo';
-    mainContainer.innerHTML = el;
-});
+require('./homepage');
+require('./signup');
 
 page.start();
 
-},{"page":8,"yo-yo":11}]},{},[13]);
+},{"./homepage":14,"./signup":17,"page":10,"yo-yo":12}],17:[function(require,module,exports){
+
+var page = require('page');
+var empty = require('empty-element');
+var template = require('./template');
+
+page('/signup', function (ctx, next) {
+    var mainContainer = document.getElementById('main-container');
+    empty(mainContainer).appendChild(template);
+});
+
+},{"./template":18,"empty-element":4,"page":10}],18:[function(require,module,exports){
+var yo = require('yo-yo');
+module.exports = yo`
+        <div class="container">
+            <div class="row">
+                <div class="col s10 push-s1">
+                    <div class="row">
+                        <div class="col m5 hide-on-small-only">
+                            <img src="iphone.png" class="iphone" alt="">
+                        </div>
+                        <div class="col s12 m7">
+                            <div class="row">
+                                <div class="signup-box">
+                                    <h1 class="platzigram"> Platzigram </h1>
+                                    <form action="" class="signup-form">
+                                        <h2> Regístrate para ver fotos de todas las personas </h2>
+                                        <div class="section">
+                                            <a class="btn btn-fb hide-on-small-only"> Iniciar Sesión con Facebook</a>
+                                            <a class="btn btn-fb hide-on-med-and-up"> Inicar Sesión </a>
+                                        </div>
+                                        <div class="divider"></div>
+                                        <div class="section">
+                                            <input type="email" name="email" placeholder="Correo Electrónico" />
+                                            <input type="text" name="name" placeholder="Nombre Completo" />
+                                            <input type="text" name="username" placeholder="Nombre de Usuario" />
+                                            <button class="btn waves-effect waves-light" type="submit"> Regístrate </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="login-box">
+                                    ¿Tienes una cuenta ? <a href="/signin">Entrar</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+ </div>`;
+
+},{"yo-yo":12}]},{},[16]);

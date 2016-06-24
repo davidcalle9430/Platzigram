@@ -4,7 +4,7 @@ var rename = require( 'gulp-rename' );
 var babel = require( 'babelify' );
 var browserify = require( 'browserify' );
 var source = require( 'vinyl-source-stream' );
-var watchify = require('watchify');
+var watchify = require( 'watchify') ;
 
 
 gulp.task( 'styles' , function(){
@@ -23,45 +23,36 @@ gulp.task( 'assets' , function(){
 
 
 
-
+ 
 function compile( watch ){
-    var bundle = watchify( {
-            entries: ['./src/index.js'],
-            cache: {},
-            packageCache: {},
-    });
     
-    function rebundle(){
+    function rebundle( ){
         bundle
             .transform( babel )
-            .bundle()
-            .pipe( source('index.js') )
-            .pipe(rename( 'app.js' ) )
-            .pipe( gulp.dest('public') );
+            .bundle( )
+            .pipe( source( 'index.js' ) )
+            .pipe( rename( 'app.js' ) )
+            .pipe( gulp.dest( 'public' ) );
     }
+    
+    var bundle = watchify( browserify( './src/index.js' ) );
     
     if( watch ){
-        bundle.on( 'update' , function(){
-           console.log('---> Bundling.. ');
-           rebundle();
-        });
+         bundle.on( 'update' , function( ){
+             console.log( "-> Haciendo el Bundle" );
+             rebundle( );
+         });
     }
     
-    rebundle();
+    rebundle( );
 }
 
-
-gulp.task( 'build', function(){
-     browserify( './src/index.js' )
-        .transform( babel )
-        .bundle()
-        .pipe( source( 'index.js' ))
-        .pipe( rename( 'app.js' ) )
-        .pipe( gulp.dest('public') );
+gulp.task( 'build', function( ) {
+    return compile( );
 });
 
-gulp.task( 'watch' , function(){
-   return compile( true ); 
+gulp.task( 'watch' , function( ) {
+    return compile( true );
 });
 
-gulp.task( 'default' , [ 'assets' , 'styles' , 'build'] );
+gulp.task( 'default' , [ 'styles' , 'assets' , 'build' ] );
