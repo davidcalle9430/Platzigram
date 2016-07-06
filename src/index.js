@@ -1,11 +1,10 @@
-
-var yo = require( 'yo-yo' );
 var page = require( 'page' );
 
+require( './header' );
 require( './homepage' );
 require( './signup' );
+require( './signin' );
+require( './footer' );
 
-page.start( );
-
-
-
+page.start( ); 
+   

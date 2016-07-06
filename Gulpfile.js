@@ -1,3 +1,4 @@
+
 var gulp = require( 'gulp' );
 var sass = require( 'gulp-sass' );
 var rename = require( 'gulp-rename' );
@@ -30,9 +31,13 @@ function compile( watch ){
         bundle
             .transform( babel )
             .bundle( )
-            .pipe( source( 'index.js' ) )
+            .on( 'error ' , function( err ){ 
+                console.log( err ); 
+             })
+            .pipe( source(  'index.js'  ) )
             .pipe( rename( 'app.js' ) )
             .pipe( gulp.dest( 'public' ) );
+        console.log("<- fin del bundle");
     }
     
     var bundle = watchify( browserify( './src/index.js' ) );
